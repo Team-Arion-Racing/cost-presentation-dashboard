@@ -8,15 +8,14 @@ import Chart from "@/app/components/ui/Chart";
 
 type LVRow = CbomRow & {
   quantityEditable: number;
+  costEditable: number;
 };
 
-function parseNumber(value: string | undefined): number {
-  if (!value) return 0;
+function parseNumber(v: string | undefined): number {
+  if (!v) return 0;
   return (
     Number(
-      value
-        .replace(/[^\d.,-]/g, "")
-        .replace(",", ".")
+      v.replace(/[^\d.,-]/g, "").replace(",", ".")
     ) || 0
   );
 }
@@ -26,41 +25,46 @@ export default function LVSystem() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadCbom()
-      .then((data) => {
-        const lvRows: LVRow[] = data
-          .filter((row) => row.SystemCode === "LV")
-          .map((row) => ({
-            ...row,
-            quantityEditable: Number(row.Quantity) || 0,
-          }));
-        setRows(lvRows);
-      })
-      .finally(() => setLoading(false));
+    loadCbom().then((data) => {
+      const mapped = data
+        .filter((row) => row.SystemCode === "LV")
+        .map((row) => ({
+          ...row,
+          quantityEditable: Number(row.Quantity) || 0,
+          costEditable: parseNumber(row.TotalCostEUR),
+        }));
+
+      setRows(mapped);
+      setLoading(false);
+    });
   }, []);
 
-  if (loading) return <div>Loading LV System data…</div>;
-  if (!rows.length) return <div>No LV rows found in cbom.csv.</div>;
+  if (loading) return <div>Loading LV System…</div>;
+  if (!rows.length) return <div>No LV rows found.</div>;
 
-  const totalCost = rows.reduce(
-    (sum, row) => sum + parseNumber(row.TotalCostEUR),
-    0
-  );
+  const totalCost = rows.reduce((s, r) => s + r.costEditable, 0);
   const partCount = rows.length;
-  const totalQuantity = rows.reduce(
-    (sum, row) => sum + row.quantityEditable,
-    0
-  );
+  const avgCost = totalCost / (partCount || 1);
+  const totalQuantity = rows.reduce((s, r) => s + r.quantityEditable, 0);
+
   const top5 = rows.slice(0, 5);
 
-  function handleQtyChange(partNumber: string, newQty: number) {
-    if (Number.isNaN(newQty) || newQty < 0) newQty = 0;
-
+  function updateQty(part: string, qty: number) {
     setRows((prev) =>
-      prev.map((row) =>
-        row.PartNumber === partNumber
-          ? { ...row, quantityEditable: newQty }
-          : row
+      prev.map((r) =>
+        r.PartNumber === part
+          ? { ...r, quantityEditable: qty < 0 ? 0 : qty }
+          : r
+      )
+    );
+  }
+
+  function updateCost(part: string, cost: number) {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.PartNumber === part
+          ? { ...r, costEditable: cost < 0 ? 0 : cost }
+          : r
       )
     );
   }
@@ -72,19 +76,15 @@ export default function LVSystem() {
       <div className="grid grid-cols-4 gap-4">
         <Card title="Total Cost" value={totalCost.toFixed(2)} unit="€" />
         <Card title="Number of LV parts" value={partCount} />
-        <Card
-          title="Avg Cost / Part"
-          value={(totalCost / (partCount || 1)).toFixed(2)}
-          unit="€"
-        />
-        <Card title="Total Quantity (editable)" value={totalQuantity} />
+        <Card title="Avg Cost / Part" value={avgCost.toFixed(2)} unit="€" />
+        <Card title="Total Quantity" value={totalQuantity} />
       </div>
 
       <Chart
-        title="Quantity of first 5 LV items"
+        title="Cost of first 5 LV items"
         points={top5.map((row) => ({
-          label: String(row.ItemName || row.SystemName || "Item"),
-          value: row.quantityEditable,
+          label: row.ItemName,
+          value: row.costEditable,
         }))}
       />
 
@@ -100,24 +100,37 @@ export default function LVSystem() {
               <input
                 type="number"
                 min={0}
-                className="w-16 rounded border px-1 py-0.5 text-sm"
                 value={row.quantityEditable}
+                className="w-16 rounded border px-1 py-0.5"
                 onChange={(e) =>
-                  handleQtyChange(
-                    row.PartNumber,
-                    Number(e.target.value)
-                  )
+                  updateQty(row.PartNumber, Number(e.target.value))
                 }
               />
             ),
           },
-          { key: "TotalCostEUR", header: "Total Cost (€)" },
+          {
+            key: "TotalCostEUR",
+            header: "Total Cost (€)",
+            render: (row) => (
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={row.costEditable}
+                className="w-24 rounded border px-1 py-0.5"
+                onChange={(e) =>
+                  updateCost(row.PartNumber, Number(e.target.value))
+                }
+              />
+            ),
+          },
         ]}
         data={rows.slice(0, 20)}
       />
     </div>
   );
 }
+
 
 
 
