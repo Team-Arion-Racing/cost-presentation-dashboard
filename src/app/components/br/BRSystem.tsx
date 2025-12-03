@@ -1,140 +1,122 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CbomRow, loadCbom } from "@/lib/loadCBOM";
-import Card from "@/app/components/ui/Card";
-import Table from "@/app/components/ui/Table";
-import Chart from "@/app/components/ui/Chart";
+import { CbomRow, loadCbom } from "@lib/loadCBOM";
 
-type BRRow = CbomRow & {
-  quantityEditable: number;
-  unitCostEditable: number;
-};
-
-const EUR_TO_INR = 90;
-
-function parseNumber(v: string | undefined): number {
-  if (!v) return 0;
-  return Number(v.replace(/[^\d.-]/g, "")) || 0;
+function getQty(row: CbomRow): number {
+  return Number(row.Quantity) || 0;
 }
 
 export default function BRSystem() {
-  const [rows, setRows] = useState<BRRow[]>([]);
+  const [rows, setRows] = useState<CbomRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadCbom()
       .then((data) => {
-        const parsed: BRRow[] = data
-          .filter((row) => row.SystemCode === "BR")
-          .map((row) => ({
-            ...row,
-            quantityEditable: Number(row.Quantity) || 0,
-            unitCostEditable: parseNumber(row.UnitCostEUR) * EUR_TO_INR || 0,
-          }));
-        setRows(parsed);
+        const brRows = data.filter((row) => row.SystemCode === "BR");
+        setRows(brRows);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Loading BR data…</div>;
+  if (loading) return <div className="text-slate-200">Loading BR data…</div>;
+  if (!rows.length) return <div className="text-slate-200">No BR rows found in cbom.csv.</div>;
 
-  const systemTotal = rows.reduce(
-    (sum, row) => sum + row.quantityEditable * row.unitCostEditable,
-    0
-  );
-
-  const avgCost = systemTotal / (rows.length || 1);
-  const totalQuantity = rows.reduce(
-    (sum, row) => sum + row.quantityEditable,
-    0
-  );
-
-  const top5 = rows.slice(0, 5);
-
-  function updateRow(partNumber: string, field: "qty" | "unit", value: number) {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.PartNumber === partNumber
-          ? {
-              ...r,
-              quantityEditable: field === "qty" ? value : r.quantityEditable,
-              unitCostEditable: field === "unit" ? value : r.unitCostEditable,
-            }
-          : r
-      )
-    );
-  }
+  const totalQty = rows.reduce((sum, r) => sum + getQty(r), 0);
+  const makeQty = rows
+    .filter((r) => r.MakeOrBuy === "Make")
+    .reduce((sum, r) => sum + getQty(r), 0);
+  const buyQty = rows
+    .filter((r) => r.MakeOrBuy === "Buy")
+    .reduce((sum, r) => sum + getQty(r), 0);
 
   return (
-    <div className="space-y-6">
-      {/* 🔥 FIXED HEADING */}
-      <h2 className="text-xl font-semibold">Brake System</h2>
+    <section className="rounded-2xl bg-slate-900 text-slate-50 p-6 space-y-4 shadow-lg shadow-slate-950/40">
+      {/* header row like screenshot */}
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500 text-xs font-semibold tracking-wide">
+            BR
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">Brake System</h2>
+            <p className="text-xs text-slate-400">Assembly breakdown</p>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <Card title="Total Cost" value={systemTotal.toFixed(2)} unit="₹" />
-        <Card title="Parts Count" value={rows.length} />
-        <Card title="Avg Cost / Part" value={avgCost.toFixed(2)} unit="₹" />
-        <Card title="Total Quantity" value={totalQuantity} />
+        <div className="flex flex-wrap items-end gap-6 text-right text-xs uppercase tracking-wide text-slate-400">
+          <div>
+            <div>TOTAL QTY</div>
+            <div className="text-xl font-semibold text-slate-50">
+              {totalQty}
+            </div>
+          </div>
+          <div>
+            <div>MAKE</div>
+            <div className="text-xl font-semibold text-emerald-300">
+              {makeQty}
+            </div>
+          </div>
+          <div>
+            <div>BUY</div>
+            <div className="text-xl font-semibold text-sky-300">
+              {buyQty}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* table */}
+      <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-4 py-2 text-left">Part ID</th>
+              <th className="px-4 py-2 text-left">Component name</th>
+              <th className="px-4 py-2 text-center">Qty</th>
+              <th className="px-4 py-2 text-center">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, 20).map((row) => (
+              <tr
+                key={row.PartNumber}
+                className="border-t border-slate-800/80 hover:bg-slate-900/70"
+              >
+                <td className="px-4 py-2 text-xs font-mono text-slate-400">
+                  {row.PartNumber}
+                </td>
+                <td className="px-4 py-2">
+                  {row.ItemName || row.Description || "-"}
+                </td>
+                <td className="px-4 py-2 text-center">
+                  <span className="inline-flex items-center rounded-full bg-slate-800 px-3 py-0.5 text-xs text-slate-100">
+                    x{getQty(row)}
+                  </span>
+                </td>
+                <td className="px-4 py-2 text-center">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium ${
+                      row.MakeOrBuy === "Make"
+                        ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-200"
+                        : "border-sky-400/40 bg-sky-500/15 text-sky-200"
+                    }`}
+                  >
+                    {(row.MakeOrBuy || "N/A").toUpperCase()}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      <Chart
-        title="Total Cost of first 5 BR items"
-        points={top5.map((r) => ({
-          label: r.ItemName,
-          value: r.quantityEditable * r.unitCostEditable,
-        }))}
-      />
-
-      <Table
-        title="BR Items (Editable)"
-        columns={[
-          { key: "ItemName", header: "Item" },
-          {
-            key: "Quantity",
-            header: "Qty",
-            render: (row) => (
-              <input
-                type="number"
-                min={0}
-                className="w-16 border rounded px-1 py-0.5"
-                value={row.quantityEditable}
-                onChange={(e) =>
-                  updateRow(row.PartNumber, "qty", Number(e.target.value))
-                }
-              />
-            ),
-          },
-          {
-            key: "UnitCostEUR",
-            header: "Unit Cost (₹)",
-            render: (row) => (
-              <input
-                type="number"
-                min={0}
-                className="w-24 border rounded px-1 py-0.5"
-                value={row.unitCostEditable}
-                onChange={(e) =>
-                  updateRow(row.PartNumber, "unit", Number(e.target.value))
-                }
-              />
-            ),
-          },
-          {
-            key: "TotalCostEUR",
-            header: "Total Cost (₹)",
-            render: (row) => (
-              <span>
-                {(row.unitCostEditable * row.quantityEditable).toFixed(2)}
-              </span>
-            ),
-          },
-        ]}
-        data={rows}
-      />
-    </div>
+    </section>
   );
 }
+
+
+
 
 
 

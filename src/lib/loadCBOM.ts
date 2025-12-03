@@ -21,8 +21,9 @@ export async function loadCbom(): Promise<CbomRow[]> {
       header: true,
       dynamicTyping: false,
       complete: (results) => {
-        const cleaned = results.data.filter(
-          (row) => Object.values(row).some((v) => v !== "" && v != null)
+        // remove completely empty rows
+        const cleaned = results.data.filter((row) =>
+          Object.values(row).some((v) => v !== "" && v != null)
         );
         resolve(cleaned);
       },
@@ -30,4 +31,3 @@ export async function loadCbom(): Promise<CbomRow[]> {
     });
   });
 }
-

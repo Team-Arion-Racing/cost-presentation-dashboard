@@ -9,17 +9,18 @@ type CardProps = {
 
 export default function Card({ title, value, unit, subtitle }: CardProps) {
   return (
-    <div className="rounded-xl border p-4 shadow-sm flex flex-col gap-1">
-      <div className="text-sm text-gray-500">{title}</div>
+    <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-slate-50 shadow-md shadow-slate-950/30 flex flex-col gap-1">
+      <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+        {title}
+      </div>
       <div className="text-2xl font-semibold">
         {value} {unit}
       </div>
       {subtitle && (
-        <div className="text-xs text-gray-400">
+        <div className="text-[11px] text-slate-500">
           {subtitle}
         </div>
       )}
     </div>
   );
 }
-
