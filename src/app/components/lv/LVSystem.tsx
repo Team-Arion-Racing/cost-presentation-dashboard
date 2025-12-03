@@ -8,16 +8,14 @@ import Chart from "@/app/components/ui/Chart";
 
 type LVRow = CbomRow & {
   quantityEditable: number;
-  costEditable: number;
+  unitCostEditable: number;
 };
+
+const EUR_TO_INR = 90;
 
 function parseNumber(v: string | undefined): number {
   if (!v) return 0;
-  return (
-    Number(
-      v.replace(/[^\d.,-]/g, "").replace(",", ".")
-    ) || 0
-  );
+  return Number(v.replace(/[^\d.-]/g, "")) || 0;
 }
 
 export default function LVSystem() {
@@ -25,45 +23,45 @@ export default function LVSystem() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadCbom().then((data) => {
-      const mapped = data
-        .filter((row) => row.SystemCode === "LV")
-        .map((row) => ({
-          ...row,
-          quantityEditable: Number(row.Quantity) || 0,
-          costEditable: parseNumber(row.TotalCostEUR),
-        }));
-
-      setRows(mapped);
-      setLoading(false);
-    });
+    loadCbom()
+      .then((data) => {
+        const parsed: LVRow[] = data
+          .filter((row) => row.SystemCode === "LV")
+          .map((row) => ({
+            ...row,
+            quantityEditable: Number(row.Quantity) || 0,
+            unitCostEditable: parseNumber(row.UnitCostEUR) * EUR_TO_INR || 0,
+          }));
+        setRows(parsed);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Loading LV System…</div>;
-  if (!rows.length) return <div>No LV rows found.</div>;
+  if (loading) return <div>Loading LV data…</div>;
+  if (!rows.length) return <div>No LV rows found in cbom.csv.</div>;
 
-  const totalCost = rows.reduce((s, r) => s + r.costEditable, 0);
-  const partCount = rows.length;
-  const avgCost = totalCost / (partCount || 1);
-  const totalQuantity = rows.reduce((s, r) => s + r.quantityEditable, 0);
+  const systemTotal = rows.reduce(
+    (sum, row) => sum + row.quantityEditable * row.unitCostEditable,
+    0
+  );
+
+  const avgCost = systemTotal / (rows.length || 1);
+  const totalQuantity = rows.reduce(
+    (sum, row) => sum + row.quantityEditable,
+    0
+  );
 
   const top5 = rows.slice(0, 5);
 
-  function updateQty(part: string, qty: number) {
+  function updateRow(partNumber: string, field: "qty" | "unit", value: number) {
     setRows((prev) =>
       prev.map((r) =>
-        r.PartNumber === part
-          ? { ...r, quantityEditable: qty < 0 ? 0 : qty }
-          : r
-      )
-    );
-  }
-
-  function updateCost(part: string, cost: number) {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.PartNumber === part
-          ? { ...r, costEditable: cost < 0 ? 0 : cost }
+        r.PartNumber === partNumber
+          ? {
+              ...r,
+              quantityEditable: field === "qty" ? value : r.quantityEditable,
+              unitCostEditable: field === "unit" ? value : r.unitCostEditable,
+            }
           : r
       )
     );
@@ -71,27 +69,27 @@ export default function LVSystem() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">LV System – Cost Overview</h2>
+      {/* 🔥 FIXED HEADING */}
+      <h2 className="text-xl font-semibold">LV System</h2>
 
       <div className="grid grid-cols-4 gap-4">
-        <Card title="Total Cost" value={totalCost.toFixed(2)} unit="€" />
-        <Card title="Number of LV parts" value={partCount} />
-        <Card title="Avg Cost / Part" value={avgCost.toFixed(2)} unit="€" />
+        <Card title="Total Cost" value={systemTotal.toFixed(2)} unit="₹" />
+        <Card title="Parts Count" value={rows.length} />
+        <Card title="Avg Cost / Part" value={avgCost.toFixed(2)} unit="₹" />
         <Card title="Total Quantity" value={totalQuantity} />
       </div>
 
       <Chart
-        title="Cost of first 5 LV items"
-        points={top5.map((row) => ({
-          label: row.ItemName,
-          value: row.costEditable,
+        title="Total Cost of first 5 LV items"
+        points={top5.map((r) => ({
+          label: r.ItemName,
+          value: r.quantityEditable * r.unitCostEditable,
         }))}
       />
 
       <Table
-        title="LV Items (first 20 rows)"
+        title="LV Items (Editable)"
         columns={[
-          { key: "SystemName", header: "System" },
           { key: "ItemName", header: "Item" },
           {
             key: "Quantity",
@@ -100,36 +98,46 @@ export default function LVSystem() {
               <input
                 type="number"
                 min={0}
+                className="w-16 border rounded px-1 py-0.5"
                 value={row.quantityEditable}
-                className="w-16 rounded border px-1 py-0.5"
                 onChange={(e) =>
-                  updateQty(row.PartNumber, Number(e.target.value))
+                  updateRow(row.PartNumber, "qty", Number(e.target.value))
+                }
+              />
+            ),
+          },
+          {
+            key: "UnitCostEUR",
+            header: "Unit Cost (₹)",
+            render: (row) => (
+              <input
+                type="number"
+                min={0}
+                className="w-24 border rounded px-1 py-0.5"
+                value={row.unitCostEditable}
+                onChange={(e) =>
+                  updateRow(row.PartNumber, "unit", Number(e.target.value))
                 }
               />
             ),
           },
           {
             key: "TotalCostEUR",
-            header: "Total Cost (€)",
+            header: "Total Cost (₹)",
             render: (row) => (
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={row.costEditable}
-                className="w-24 rounded border px-1 py-0.5"
-                onChange={(e) =>
-                  updateCost(row.PartNumber, Number(e.target.value))
-                }
-              />
+              <span>
+                {(row.unitCostEditable * row.quantityEditable).toFixed(2)}
+              </span>
             ),
           },
         ]}
-        data={rows.slice(0, 20)}
+        data={rows}
       />
     </div>
   );
 }
+
+
 
 
 
