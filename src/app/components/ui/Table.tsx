@@ -1,8 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 type Column<T> = {
   key: keyof T;
   header: string;
+  // optional custom renderer (for inputs etc.)
+  render?: (row: T) => ReactNode;
 };
 
 type TableProps<T> = {
@@ -24,7 +28,10 @@ export default function Table<T extends object>({
           <thead className="bg-gray-100">
             <tr>
               {columns.map((col) => (
-                <th key={String(col.key)} className="px-3 py-2 text-left">
+                <th
+                  key={String(col.key)}
+                  className="px-3 py-2 text-left font-medium"
+                >
                   {col.header}
                 </th>
               ))}
@@ -35,7 +42,9 @@ export default function Table<T extends object>({
               <tr key={idx} className="border-t">
                 {columns.map((col) => (
                   <td key={String(col.key)} className="px-3 py-2">
-                    {String(row[col.key])}
+                    {col.render
+                      ? col.render(row)
+                      : String(row[col.key])}
                   </td>
                 ))}
               </tr>
@@ -46,4 +55,6 @@ export default function Table<T extends object>({
     </div>
   );
 }
+
+
 

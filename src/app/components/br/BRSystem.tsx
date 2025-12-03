@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadCbom, CbomRow } from "../../lib/loadCBOM";
-import Card from "../ui/Card";
-import Table from "../ui/Table";
-import Chart from "../ui/Chart";
+import { CbomRow, loadCbom } from "@/lib/loadCBOM";
+import Card from "@/app/components/ui/Card";
+import Table from "@/app/components/ui/Table";
+import Chart from "@/app/components/ui/Chart";
 
+// Extend CSV row with editable quantity
+type BRRow = CbomRow & {
+  quantityEditable: number;
+};
+
+// helper for cost if you later fill the CSV
 function parseNumber(value: string | undefined): number {
   if (!value) return 0;
   return (
@@ -18,13 +24,18 @@ function parseNumber(value: string | undefined): number {
 }
 
 export default function BRSystem() {
-  const [rows, setRows] = useState<CbomRow[]>([]);
+  const [rows, setRows] = useState<BRRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadCbom()
       .then((data) => {
-        const brRows = data.filter((row) => row.SystemCode === "BR");
+        const brRows: BRRow[] = data
+          .filter((row) => row.SystemCode === "BR")
+          .map((row) => ({
+            ...row,
+            quantityEditable: Number(row.Quantity) || 0,
+          }));
         setRows(brRows);
       })
       .finally(() => setLoading(false));
@@ -33,48 +44,87 @@ export default function BRSystem() {
   if (loading) return <div>Loading Brake System data…</div>;
   if (!rows.length) return <div>No BR rows found in cbom.csv.</div>;
 
+  // costs (still 0 until you fill CSV)
   const totalCost = rows.reduce(
     (sum, row) => sum + parseNumber(row.TotalCostEUR),
     0
   );
-  const totalQty = rows.reduce(
-    (sum, row) => sum + Number(row.Quantity || "0"),
+
+  const partCount = rows.length;
+  const totalQuantity = rows.reduce(
+    (sum, row) => sum + row.quantityEditable,
     0
   );
-  const assemblies = new Set(rows.map((r) => r.SystemName)).size;
 
   const top5 = rows.slice(0, 5);
+
+  function handleQtyChange(partNumber: string, newQty: number) {
+    if (Number.isNaN(newQty) || newQty < 0) newQty = 0;
+
+    setRows((prev) =>
+      prev.map((row) =>
+        row.PartNumber === partNumber
+          ? { ...row, quantityEditable: newQty }
+          : row
+      )
+    );
+  }
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Brake System – Cost Overview</h2>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card title="BR items" value={rows.length} />
-        <Card title="Unique assemblies" value={assemblies} />
-        <Card title="Total quantity" value={totalQty} />
+      <div className="grid grid-cols-4 gap-4">
+        <Card title="Total Cost" value={totalCost.toFixed(2)} unit="€" />
+        <Card title="Number of BR parts" value={partCount} />
+        <Card
+          title="Avg Cost / Part"
+          value={(totalCost / (partCount || 1)).toFixed(2)}
+          unit="€"
+        />
+        <Card title="Total Quantity (editable)" value={totalQuantity} />
       </div>
 
       <Chart
-        title="BR – first 5 items (qty)"
+        title="Quantity of first 5 BR items"
         points={top5.map((row) => ({
-          label: row.ItemName,
-          value: Number(row.Quantity || "0"),
+          label: String(row.ItemName || row.SystemName || "Item"),
+          value: row.quantityEditable,
         }))}
       />
 
       <Table
-        title="BR BOM (first 15 rows)"
+        title="BR Items (first 20 rows)"
         columns={[
-          { key: "SystemName", header: "Assembly" },
+          { key: "SystemName", header: "System" },
           { key: "ItemName", header: "Item" },
-          { key: "Quantity", header: "Qty" },
-          { key: "PartNumber", header: "Part No." },
+          {
+            key: "Quantity",
+            header: "Qty",
+            render: (row) => (
+              <input
+                type="number"
+                min={0}
+                className="w-16 rounded border px-1 py-0.5 text-sm"
+                value={row.quantityEditable}
+                onChange={(e) =>
+                  handleQtyChange(
+                    row.PartNumber,
+                    Number(e.target.value)
+                  )
+                }
+              />
+            ),
+          },
+          { key: "TotalCostEUR", header: "Total Cost (€)" },
         ]}
-        data={rows.slice(0, 15)}
+        data={rows.slice(0, 20)}
       />
     </div>
   );
 }
+
+
+
 
 
