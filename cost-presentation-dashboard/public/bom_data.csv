@@ -1,0 +1,24 @@
+id,system,name,qty,type
+1006-FR-00001,FR,Nose Cone (Body),1,Make
+1006-FR-00002,FR,Side Panels,4,Make
+1006-FR-00005,FR,Chassis Frame,1,Make
+1006-FR-00006,FR,Suspension Brackets,40,Make
+1006-FR-00021,FR,Impact Attenuator,1,Buy
+1006-FR-00031,FR,Brake Pedal,1,Buy
+1006-FR-00034,FR,Throttle Pedal,1,Make
+1006-FR-00039,FR,Clutch Pedal,1,Make
+1006-FR-00046,FR,Shifter Handle,1,Make
+1006-WT-00001,WT,Front Hubs,2,Make
+1006-WT-00003,WT,Rear Hubs,2,Make
+1006-WT-00002,WT,Front Wheel Bearings,2,Buy
+1006-WT-00004,WT,Rear Wheel Bearings,2,Buy
+1006-WT-00005,WT,Front Wheels & Tires,2,Buy
+1006-WT-00006,WT,Rear Wheels & Tires,2,Buy
+1006-WT-00007,WT,Valve Stems,4,Buy
+1006-MS-00004,MS,Driver Harness,1,Buy
+1006-MS-00012,MS,Firewall (Driver),1,Make
+1006-MS-00013,MS,Firewall (Engine Right),1,Make
+1006-MS-00014,MS,Firewall (Engine Left),1,Make
+1006-MS-00001,MS,Driver Seat,1,Buy
+1006-MS-00009,MS,Paint (Frame),1,Buy
+1006-MS-00011,MS,Rack & Pinion Guard,1,Buy
