@@ -1,21 +1,17 @@
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
+"use client";
 
 import BRSystem from "./components/br/BRSystem";
 import LVSystem from "./components/lv/LVSystem";
-import Image from "next/image";
 
-export default function Home() {
+export default function Page() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black py-10">
-      <ResizablePanelGroup direction="horizontal">
-  <ResizablePanel>One</ResizablePanel>
-  <ResizableHandle />
-  <ResizablePanel>Two</ResizablePanel>
-</ResizablePanelGroup>
+    <div className="space-y-10 p-6 bg-slate-950 min-h-screen">
+      {/* BR System Section */}
+      <BRSystem />
+
+      {/* LV System Section */}
+      <LVSystem />
     </div>
   );
 }
+

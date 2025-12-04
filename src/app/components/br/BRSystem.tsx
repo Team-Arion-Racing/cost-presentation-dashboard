@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { CbomRow, loadCbom } from "@lib/loadCBOM";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "../ui/table"; // relative path to shadcn table
 
 function getQty(row: CbomRow): number {
   return Number(row.Quantity) || 0;
@@ -20,8 +28,15 @@ export default function BRSystem() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-slate-200">Loading BR data…</div>;
-  if (!rows.length) return <div className="text-slate-200">No BR rows found in cbom.csv.</div>;
+  if (loading) {
+    return <div className="text-slate-200">Loading BR data…</div>;
+  }
+
+  if (!rows.length) {
+    return (
+      <div className="text-slate-200">No BR rows found in cbom.csv.</div>
+    );
+  }
 
   const totalQty = rows.reduce((sum, r) => sum + getQty(r), 0);
   const makeQty = rows
@@ -33,7 +48,7 @@ export default function BRSystem() {
 
   return (
     <section className="rounded-2xl bg-slate-900 text-slate-50 p-6 space-y-4 shadow-lg shadow-slate-950/40">
-      {/* header row like screenshot */}
+      {/* header row, like screenshot */}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500 text-xs font-semibold tracking-wide">
@@ -67,35 +82,37 @@ export default function BRSystem() {
         </div>
       </header>
 
-      {/* table */}
+      {/* table using shadcn UI */}
       <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-400">
-            <tr>
-              <th className="px-4 py-2 text-left">Part ID</th>
-              <th className="px-4 py-2 text-left">Component name</th>
-              <th className="px-4 py-2 text-center">Qty</th>
-              <th className="px-4 py-2 text-center">Source</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader className="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-400">
+            <TableRow>
+              <TableHead className="px-4 py-2 text-left">Part ID</TableHead>
+              <TableHead className="px-4 py-2 text-left">
+                Component name
+              </TableHead>
+              <TableHead className="px-4 py-2 text-center">Qty</TableHead>
+              <TableHead className="px-4 py-2 text-center">Source</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.slice(0, 20).map((row) => (
-              <tr
+              <TableRow
                 key={row.PartNumber}
                 className="border-t border-slate-800/80 hover:bg-slate-900/70"
               >
-                <td className="px-4 py-2 text-xs font-mono text-slate-400">
+                <TableCell className="px-4 py-2 text-xs font-mono text-slate-400">
                   {row.PartNumber}
-                </td>
-                <td className="px-4 py-2">
+                </TableCell>
+                <TableCell className="px-4 py-2">
                   {row.ItemName || row.Description || "-"}
-                </td>
-                <td className="px-4 py-2 text-center">
+                </TableCell>
+                <TableCell className="px-4 py-2 text-center">
                   <span className="inline-flex items-center rounded-full bg-slate-800 px-3 py-0.5 text-xs text-slate-100">
                     x{getQty(row)}
                   </span>
-                </td>
-                <td className="px-4 py-2 text-center">
+                </TableCell>
+                <TableCell className="px-4 py-2 text-center">
                   <span
                     className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium ${
                       row.MakeOrBuy === "Make"
@@ -105,15 +122,17 @@ export default function BRSystem() {
                   >
                     {(row.MakeOrBuy || "N/A").toUpperCase()}
                   </span>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </section>
   );
 }
+
+
 
 
 

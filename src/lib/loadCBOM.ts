@@ -21,7 +21,6 @@ export async function loadCbom(): Promise<CbomRow[]> {
       header: true,
       dynamicTyping: false,
       complete: (results) => {
-        // remove completely empty rows
         const cleaned = results.data.filter((row) =>
           Object.values(row).some((v) => v !== "" && v != null)
         );
